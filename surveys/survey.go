@@ -2,6 +2,7 @@ package surveys
 
 import (
 	"fmt"
+	"github-issue-creator/colors"
 	"github-issue-creator/flags"
 	github_issues "github-issue-creator/github-issues"
 	"github.com/AlecAivazis/survey/v2"
@@ -47,13 +48,8 @@ func Start(flags flags.UserFlags) {
 }
 
 func handleSelection(answers *BaseSurveyAnswers, client *github_issues.GithubService) {
-	if answers.Action == "get_issues" {
-		fmt.Printf("loading...\n")
-		issueId, err := getIssuesList(client)
-		if err != nil {
-			log.Fatal(err)
-		}
-		getIssueById(client, issueId)
+	if answers.Action == "create_issue" {
+		createIssue(client)
 	} else if answers.Action == "get_issue_by_id" {
 		var issueId string
 		err := survey.AskOne(&survey.Input{Message: "Please, type issue number"}, &issueId)
@@ -62,7 +58,12 @@ func handleSelection(answers *BaseSurveyAnswers, client *github_issues.GithubSer
 		}
 		getIssueById(client, issueId)
 	} else {
-		createIssue(client)
+		fmt.Printf("loading...\n")
+		issueId, err := getIssuesList(client)
+		if err != nil {
+			log.Fatal(err)
+		}
+		getIssueById(client, issueId)
 	}
 }
 
@@ -101,8 +102,30 @@ func getIssueById(client *github_issues.GithubService, issueId string) {
 		fmt.Println("Error occurred")
 		log.Fatal(err)
 	}
-	fmt.Printf("\n issue_id: %s \n title: %s \n created_by: %s \n created_at: %s \n body: %s",
-		issueId, issue.Title, issue.User.Login, issue.CreatedAt, issue.Body)
+	fmt.Printf("\n\n")
+	colors.ColorizeOutput("issue_id  ", issueId)
+	colors.ColorizeOutput("title     ", issue.Title)
+	colors.ColorizeOutput("created_by", issue.User.Login)
+	colors.ColorizeOutput("created_at", issue.CreatedAt.String())
+	colors.ColorizeOutput("body      ", issue.Body)
+	fmt.Printf("\n\n")
+
+	afterIssueSelected(client, issue)
+}
+
+func afterIssueSelected(client *github_issues.GithubService, issue *github_issues.Issue) {
+	var nextAxtion string
+	survey.AskOne(&survey.Select{
+		Message: "What do you want to do next?",
+		Options: []string{"update_issue", "read_another_issue", "exit"},
+	}, &nextAxtion)
+
+	switch nextAxtion {
+	case "update_issue":
+		updateIssue(client, issue)
+	case "read_another_issue":
+		handleSelection(&BaseSurveyAnswers{"get_issues"}, client)
+	}
 }
 
 func createIssue(client *github_issues.GithubService) {
@@ -134,5 +157,34 @@ func createIssue(client *github_issues.GithubService) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("Issue created successfully")
+}
+
+func updateIssue(client *github_issues.GithubService, issue *github_issues.Issue) {
+	questions := []*survey.Question{
+		{
+			Name: "title",
+			Prompt: &survey.Input{
+				Message: "Enter a title or press Enter to leave as is",
+				Default: issue.Title,
+			},
+		},
+		{
+			Name: "body",
+			Prompt: &survey.Input{
+				Message: "Enter a body or press Enter to leave as is",
+				Default: issue.Body,
+			},
+		},
+	}
+
+	answers := struct {
+		Title string
+		Body  string
+	}{}
+
+	survey.Ask(questions, &answers)
+	err := client.UpdateIssue(answers.Title, answers.Body, issue.Number)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

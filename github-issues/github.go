@@ -73,19 +73,46 @@ func (g *GithubService) CreateIssue(title string, body string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		resp.Body.Close()
 		return fmt.Errorf("сбой запроса: %s", resp.Status)
 	}
 
 	var result *Issue
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		resp.Body.Close()
 		return err
 	}
 
-	resp.Body.Close()
+	fmt.Println("Issue created successfully")
+	return nil
+}
+
+func (g *GithubService) UpdateIssue(title, body string, id int) error {
+	values := map[string]string{"title": title, "body": body}
+	jsonValue, _ := json.Marshal(values)
+	fmt.Printf("\n %+v \n", values)
+	req, err := g.MyRequest("PATCH", fmt.Sprintf("%s/%d", g.url, id), bytes.NewBuffer(jsonValue))
+	if err != nil {
+		return err
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("сбой запроса: %s", resp.Status)
+	}
+
+	var result *Issue
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return err
+	}
+
+	fmt.Println("Issue updated successfully")
 	return nil
 }
 
