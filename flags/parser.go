@@ -2,6 +2,7 @@ package flags
 
 import (
 	"flag"
+	"fmt"
 )
 
 type UserFlags struct {
@@ -11,13 +12,12 @@ type UserFlags struct {
 }
 
 func GetFlags() UserFlags {
-	username := *flag.String("username", "AlisherRMA", "Repo owner's username")
-	repo := *flag.String("repo", "go-issue-creator", "Repo name")
-	token := *flag.String("token", "", "Github access token")
+	flags := UserFlags{}
+
+	flag.StringVar(&flags.Username, "username", "AlisherRMA", "Repo owner's username")
+	flag.StringVar(&flags.Repo, "repo", "go-issue-creator", "Repo name")
+	flag.StringVar(&flags.Token, "token", "", "Github access token")
 	flag.Parse()
-	return UserFlags{
-		Username: username,
-		Repo:     repo,
-		Token:    token,
-	}
+	fmt.Println(flags)
+	return flags
 }

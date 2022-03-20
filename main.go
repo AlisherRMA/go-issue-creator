@@ -7,6 +7,5 @@ import (
 
 func main() {
 	myFlags := flags.GetFlags()
-
 	surveys.Start(myFlags)
 }
